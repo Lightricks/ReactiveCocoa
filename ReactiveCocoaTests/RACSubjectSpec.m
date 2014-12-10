@@ -23,24 +23,21 @@
 #import "RACUnit.h"
 
 @interface RACTestSubscriber : NSObject <RACSubscriber>
-@property (nonatomic, strong, readonly) RACDisposable *disposable;
 @end
 
 @implementation RACTestSubscriber
 
+@synthesize disposable = _disposable;
+
 - (instancetype)init {
 	self = [super init];
-	_disposable = [RACDisposable new];
+	_disposable = [RACCompoundDisposable new];
 	return self;
 }
 
 - (void)sendNext:(id)value {}
 - (void)sendError:(NSError *)error {}
 - (void)sendCompleted {}
-
-- (void)didSubscribeWithDisposable:(RACCompoundDisposable *)disposable {
-	[disposable addDisposable:self.disposable];
-}
 
 @end
 

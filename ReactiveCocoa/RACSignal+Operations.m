@@ -22,7 +22,6 @@
 #import "RACSignalSequence.h"
 #import "RACStream+Private.h"
 #import "RACSubject.h"
-#import "RACSubscriber+Private.h"
 #import "RACSubscriber.h"
 #import "RACTuple.h"
 #import "RACUnit.h"
@@ -1339,27 +1338,23 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 			currentCloseWindow = nil;
 			[closeObserverDisposable dispose], closeObserverDisposable = nil;
 		};
-
-		RACDisposable *openObserverDisposable = [openSignal subscribe:[RACSubscriber subscriberWithNext:^(id x) {
+		
+		RACDisposable *openObserverDisposable = [openSignal subscribeNext:^(id x) {
 			if(currentWindow == nil) {
 				currentWindow = [RACSubject subject];
 				[subscriber sendNext:currentWindow];
 
 				currentCloseWindow = closeBlock(currentWindow);
-				closeObserverDisposable = [currentCloseWindow subscribe:[RACSubscriber subscriberWithNext:^(id x) {
+				closeObserverDisposable = [currentCloseWindow subscribeNext:^(id x) {
 					closeCurrentWindow();
 				} error:^(NSError *error) {
 					closeCurrentWindow();
 				} completed:^{
 					closeCurrentWindow();
-				}]];
+				}];
 			}
-		} error:^(NSError *error) {
-
-		} completed:^{
-
-		}]];
-
+		}];
+				
 		RACDisposable *selfObserverDisposable = [self subscribeNext:^(id x) {
 			[currentWindow sendNext:x];
 		} error:^(NSError *error) {

@@ -1,5 +1,5 @@
 //
-//  RACSubscriberSpec.m
+//  RACLiveSubscriberSpec.m
 //  ReactiveCocoa
 //
 //  Created by Justin Spahr-Summers on 2012-11-27.
@@ -11,13 +11,12 @@
 
 #import "RACSubscriberExamples.h"
 
-#import "RACSubscriber.h"
-#import "RACSubscriber+Private.h"
+#import "RACLiveSubscriber.h"
 #import <libkern/OSAtomic.h>
 
-QuickSpecBegin(RACSubscriberSpec)
+QuickSpecBegin(RACLiveSubscriberSpec)
 
-__block RACSubscriber *subscriber;
+__block RACLiveSubscriber *subscriber;
 __block NSMutableArray *values;
 
 __block volatile BOOL finished;
@@ -35,7 +34,7 @@ qck_beforeEach(^{
 	success = YES;
 	error = nil;
 
-	subscriber = [RACSubscriber subscriberWithNext:^(id value) {
+	subscriber = [RACLiveSubscriber subscriberWithNext:^(id value) {
 		if (finished) OSAtomicIncrement32Barrier(&nextsAfterFinished);
 
 		[values addObject:value];
@@ -90,8 +89,9 @@ qck_describe(@"finishing", ^{
 		// Time out after one second.
 		dispatch_time_t time = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC));
 		expect(@(dispatch_group_wait(dispatchGroup, time))).to(equal(@0));
-
+		
 		dispatchGroup = NULL;
+
 		concurrentQueue = NULL;
 
 		expect(@(nextsAfterFinished)).to(equal(@0));
