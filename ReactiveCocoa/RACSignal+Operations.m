@@ -509,10 +509,6 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		void (^completeIfAllowed)(void) = ^{
 			if (selfCompleted && activeDisposables.count == 0) {
 				[subscriber sendCompleted];
-
-				// A strong reference is held to `subscribeToSignal` until completion,
-				// preventing it from deallocating early.
-				subscribeToSignal = nil;
 			}
 		};
 
@@ -577,6 +573,12 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 				selfCompleted = YES;
 				completeIfAllowed();
 			}
+		}]];
+
+		[compoundDisposable addDisposable:[RACDisposable disposableWithBlock:^{
+			// A strong reference is held to `subscribeToSignal` until we're
+			// done, preventing it from deallocating early.
+			subscribeToSignal = nil;
 		}]];
 
 		return compoundDisposable;
