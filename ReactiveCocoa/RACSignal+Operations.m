@@ -782,25 +782,65 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 }
 
 - (RACSignal *)switchToLatest {
-	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
-		RACMulticastConnection *connection = [self publish];
+  return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    __block RACSerialDisposable *currentDisposable = [[RACSerialDisposable alloc] init];
+    __block volatile int32_t activeSubscriptions = 1;
 
-		RACDisposable *subscriptionDisposable = [[connection.signal
-			flattenMap:^(RACSignal *x) {
-				NSCAssert(x == nil || [x isKindOfClass:RACSignal.class], @"-switchToLatest requires that the source signal (%@) send signals. Instead we got: %@", self, x);
+    RACDisposable *subscriptionDisposable = [self subscribeNext:^(RACSignal *signal) {
+      NSCAssert([signal isKindOfClass:RACSignal.class], @"-switchToLatest expects signals as values, instead we got: %@", signal);
 
-				// -concat:[RACSignal never] prevents completion of the receiver from
-				// prematurely terminating the inner signal.
-				return [x takeUntil:[connection.signal concat:[RACSignal never]]];
-			}]
-			subscribe:subscriber];
+      [currentDisposable.disposable dispose];
 
-		RACDisposable *connectionDisposable = [connection connect];
-		return [RACDisposable disposableWithBlock:^{
-			[subscriptionDisposable dispose];
-			[connectionDisposable dispose];
-		}];
-	}] setNameWithFormat:@"[%@] -switchToLatest", self.name];
+      OSAtomicIncrement32Barrier(&activeSubscriptions);
+      RACDisposable *innerDisposable = [signal subscribeNext:^(id x) {
+        [subscriber sendNext:x];
+      } error:^(NSError *error) {
+        [subscriber sendError:error];
+      } completed:^{
+        OSAtomicDecrement32Barrier(&activeSubscriptions);
+        if (!activeSubscriptions) {
+          [subscriber sendCompleted];
+        }
+      }];
+
+      [currentDisposable swapInDisposable:[RACDisposable disposableWithBlock:^{
+        OSAtomicDecrement32Barrier(&activeSubscriptions);
+        [innerDisposable dispose];
+      }]];
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      OSAtomicDecrement32Barrier(&activeSubscriptions);
+      if (!activeSubscriptions) {
+        [subscriber sendCompleted];
+      }
+    }];
+
+    return [RACDisposable disposableWithBlock:^{
+      [currentDisposable dispose];
+      [subscriptionDisposable dispose];
+    }];
+  }] setNameWithFormat:@"[%@] -switchToLatest", self.name];
+
+//	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
+//		RACMulticastConnection *connection = [self publish];
+//
+//		RACDisposable *subscriptionDisposable = [[connection.signal
+//			flattenMap:^(RACSignal *x) {
+//				NSCAssert(x == nil || [x isKindOfClass:RACSignal.class], @"-switchToLatest requires that the source signal (%@) send signals. Instead we got: %@", self, x);
+//
+//				// -concat:[RACSignal never] prevents completion of the receiver from
+//				// prematurely terminating the inner signal.
+//				return [x takeUntil:[connection.signal concat:[RACSignal never]]];
+//			}]
+//			subscribe:subscriber];
+//
+//		RACDisposable *connectionDisposable = [connection connect];
+//		return [RACDisposable disposableWithBlock:^{
+//			[subscriptionDisposable dispose];
+//			[connectionDisposable dispose];
+//		}];
+//	}] setNameWithFormat:@"[%@] -switchToLatest", self.name];
 }
 
 + (RACSignal *)switch:(RACSignal *)signal cases:(NSDictionary *)cases default:(RACSignal *)defaultSignal {
