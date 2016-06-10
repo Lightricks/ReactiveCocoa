@@ -783,23 +783,56 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 
 - (RACSignal *)switchToLatest {
 	return [[RACSignal createSignal:^(id<RACSubscriber> subscriber) {
-		RACMulticastConnection *connection = [self publish];
+    __block BOOL outerCompleted = NO;
+    __block BOOL innerCompleted = NO;
+    __block uint64_t innerSignalCount = 0;
 
-		RACDisposable *subscriptionDisposable = [[connection.signal
-			flattenMap:^(RACSignal *x) {
-				NSCAssert(x == nil || [x isKindOfClass:RACSignal.class], @"-switchToLatest requires that the source signal (%@) send signals. Instead we got: %@", self, x);
+    RACSerialDisposable *innerDisposable = [[RACSerialDisposable alloc] init];
+    NSLock *lock = [[NSLock alloc] init];
 
-				// -concat:[RACSignal never] prevents completion of the receiver from
-				// prematurely terminating the inner signal.
-				return [x takeUntil:[connection.signal concat:[RACSignal never]]];
-			}]
-			subscribe:subscriber];
+    RACDisposable *outerDisposable = [self subscribeNext:^(RACSignal *signal) {
+      NSCAssert(signal == nil || [signal isKindOfClass:RACSignal.class], @"-switchToLatest expects signals as values, instead we got: %@", signal);
+      signal = signal ?: [RACSignal empty];
 
-		RACDisposable *connectionDisposable = [connection connect];
-		return [RACDisposable disposableWithBlock:^{
-			[subscriptionDisposable dispose];
-			[connectionDisposable dispose];
-		}];
+      [innerDisposable.disposable dispose];
+
+      [lock lock];
+      innerCompleted = NO;
+      ++innerSignalCount;
+      uint64_t signalIndex = innerSignalCount;
+      [lock unlock];
+
+      RACDisposable *disposable = [signal subscribeNext:^(id x) {
+        [subscriber sendNext:x];
+      } error:^(NSError *error) {
+        [subscriber sendError:error];
+      } completed:^{
+        [lock lock];
+        if (innerSignalCount == signalIndex) {
+          innerCompleted = YES;
+          if (innerCompleted && outerCompleted) {
+            [subscriber sendCompleted];
+          }
+        }
+        [lock unlock];
+      }];
+
+      [innerDisposable swapInDisposable:disposable];
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      [lock lock];
+      outerCompleted = YES;
+      if (innerCompleted && outerCompleted) {
+        [subscriber sendCompleted];
+      }
+      [lock unlock];
+    }];
+
+    return [RACDisposable disposableWithBlock:^{
+      [innerDisposable dispose];
+      [outerDisposable dispose];
+    }];
 	}] setNameWithFormat:@"[%@] -switchToLatest", self.name];
 }
 

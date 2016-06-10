@@ -13,6 +13,8 @@
 		7A7065821A3F88B8001E8354 /* RACKVOProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 7A70657E1A3F88B8001E8354 /* RACKVOProxy.m */; };
 		7A7065841A3F8967001E8354 /* RACKVOProxySpec.m in Sources */ = {isa = PBXBuildFile; fileRef = 7A7065831A3F8967001E8354 /* RACKVOProxySpec.m */; };
 		7A7065851A3F8967001E8354 /* RACKVOProxySpec.m in Sources */ = {isa = PBXBuildFile; fileRef = 7A7065831A3F8967001E8354 /* RACKVOProxySpec.m */; };
+		8B067C391CFC937000882958 /* RACPassthroughSubscriberSpec.m in Sources */ = {isa = PBXBuildFile; fileRef = 8B5F74A51CFC8DA600022325 /* RACPassthroughSubscriberSpec.m */; };
+		8B5F74A61CFC8DA600022325 /* RACPassthroughSubscriberSpec.m in Sources */ = {isa = PBXBuildFile; fileRef = 8B5F74A51CFC8DA600022325 /* RACPassthroughSubscriberSpec.m */; };
 		BEBDD6E91CDD7E67009A75A9 /* EXTRuntimeExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = D037666719EDA57100A782A9 /* EXTRuntimeExtensions.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		BEBDD6EA1CDD7E6A009A75A9 /* EXTRuntimeExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = D037666719EDA57100A782A9 /* EXTRuntimeExtensions.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		CDF066CC1CDE4E3D00199626 /* RACDelegateProxy.h in Headers */ = {isa = PBXBuildFile; fileRef = D037646B19EDA41200A782A9 /* RACDelegateProxy.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -440,6 +442,7 @@
 		7A70657D1A3F88B8001E8354 /* RACKVOProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RACKVOProxy.h; sourceTree = "<group>"; };
 		7A70657E1A3F88B8001E8354 /* RACKVOProxy.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RACKVOProxy.m; sourceTree = "<group>"; };
 		7A7065831A3F8967001E8354 /* RACKVOProxySpec.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RACKVOProxySpec.m; sourceTree = "<group>"; };
+		8B5F74A51CFC8DA600022325 /* RACPassthroughSubscriberSpec.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RACPassthroughSubscriberSpec.m; sourceTree = "<group>"; };
 		D037642A19EDA41200A782A9 /* NSArray+RACSequenceAdditions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSArray+RACSequenceAdditions.h"; sourceTree = "<group>"; };
 		D037642B19EDA41200A782A9 /* NSArray+RACSequenceAdditions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSArray+RACSequenceAdditions.m"; sourceTree = "<group>"; };
 		D037642C19EDA41200A782A9 /* NSControl+RACCommandSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSControl+RACCommandSupport.h"; sourceTree = "<group>"; };
@@ -1003,6 +1006,7 @@
 				7A7065831A3F8967001E8354 /* RACKVOProxySpec.m */,
 				D037669219EDA60000A782A9 /* RACKVOWrapperSpec.m */,
 				D037669319EDA60000A782A9 /* RACMulticastConnectionSpec.m */,
+				8B5F74A51CFC8DA600022325 /* RACPassthroughSubscriberSpec.m */,
 				D037669419EDA60000A782A9 /* RACPropertySignalExamples.h */,
 				D037669519EDA60000A782A9 /* RACPropertySignalExamples.m */,
 				D037669619EDA60000A782A9 /* RACSchedulerSpec.m */,
@@ -1388,6 +1392,7 @@
 		D04725E119E49ED7006002AA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				LastSwiftUpdateCheck = 0730;
 				LastUpgradeCheck = 0620;
 				ORGANIZATIONNAME = GitHub;
 				TargetAttributes = {
@@ -1551,6 +1556,7 @@
 				D037670B19EDA60000A782A9 /* RACTargetQueueSchedulerSpec.m in Sources */,
 				D03766DD19EDA60000A782A9 /* RACCommandSpec.m in Sources */,
 				D037670919EDA60000A782A9 /* RACSubscriptingAssignmentTrampolineSpec.m in Sources */,
+				8B5F74A61CFC8DA600022325 /* RACPassthroughSubscriberSpec.m in Sources */,
 				D03766EB19EDA60000A782A9 /* RACKVOWrapperSpec.m in Sources */,
 				D03766E719EDA60000A782A9 /* RACEventSpec.m in Sources */,
 				D03766F719EDA60000A782A9 /* RACSequenceSpec.m in Sources */,
@@ -1718,6 +1724,7 @@
 				D03766D219EDA60000A782A9 /* NSURLConnectionRACSupportSpec.m in Sources */,
 				D03766F419EDA60000A782A9 /* RACSequenceAdditionsSpec.m in Sources */,
 				D037670E19EDA60000A782A9 /* RACTestExampleScheduler.m in Sources */,
+				8B067C391CFC937000882958 /* RACPassthroughSubscriberSpec.m in Sources */,
 				D03766EE19EDA60000A782A9 /* RACMulticastConnectionSpec.m in Sources */,
 				D03766EA19EDA60000A782A9 /* RACKVOChannelSpec.m in Sources */,
 				D03766FC19EDA60000A782A9 /* RACSignalSpec.m in Sources */,

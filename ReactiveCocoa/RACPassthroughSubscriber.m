@@ -11,6 +11,8 @@
 #import "RACSignal.h"
 #import "RACSignalProvider.h"
 
+#import <ReactiveCocoa/EXTScope.h>
+
 static const char *cleanedDTraceString(NSString *original) {
 	return [original stringByReplacingOccurrencesOfString:@"\\s+" withString:@" " options:NSRegularExpressionSearch range:NSMakeRange(0, original.length)].UTF8String;
 }
@@ -26,10 +28,12 @@ static const char *cleanedSignalDescription(RACSignal *signal) {
 	return cleanedDTraceString(desc);
 }
 
-@interface RACPassthroughSubscriber ()
+@interface RACPassthroughSubscriber () {
+  BOOL _disposed;
+}
 
 // The subscriber to which events should be forwarded.
-@property (nonatomic, strong, readonly) id<RACSubscriber> innerSubscriber;
+@property (nonatomic, strong, readwrite) id<RACSubscriber> innerSubscriber;
 
 // The signal sending events to this subscriber.
 //
@@ -59,6 +63,15 @@ static const char *cleanedSignalDescription(RACSignal *signal) {
 	_disposable = disposable;
 
 	[self.innerSubscriber didSubscribeWithDisposable:self.disposable];
+
+  @weakify(self);
+  [self.disposable addDisposable:[RACDisposable disposableWithBlock:^{
+    @strongify(self);
+    @synchronized (self) {
+      self.innerSubscriber = nil;
+    }
+  }]];
+
 	return self;
 }
 
@@ -71,7 +84,9 @@ static const char *cleanedSignalDescription(RACSignal *signal) {
 		RACSIGNAL_NEXT(cleanedSignalDescription(self.signal), cleanedDTraceString(self.innerSubscriber.description), cleanedDTraceString([value description]));
 	}
 
-	[self.innerSubscriber sendNext:value];
+  @synchronized (self) {
+    [self.innerSubscriber sendNext:value];
+  }
 }
 
 - (void)sendError:(NSError *)error {
@@ -81,7 +96,9 @@ static const char *cleanedSignalDescription(RACSignal *signal) {
 		RACSIGNAL_ERROR(cleanedSignalDescription(self.signal), cleanedDTraceString(self.innerSubscriber.description), cleanedDTraceString(error.description));
 	}
 
-	[self.innerSubscriber sendError:error];
+  @synchronized (self) {
+    [self.innerSubscriber sendError:error];
+  }
 }
 
 - (void)sendCompleted {
@@ -91,7 +108,9 @@ static const char *cleanedSignalDescription(RACSignal *signal) {
 		RACSIGNAL_COMPLETED(cleanedSignalDescription(self.signal), cleanedDTraceString(self.innerSubscriber.description));
 	}
 
-	[self.innerSubscriber sendCompleted];
+  @synchronized (self) {
+    [self.innerSubscriber sendCompleted];
+  }
 }
 
 - (void)didSubscribeWithDisposable:(RACCompoundDisposable *)disposable {
