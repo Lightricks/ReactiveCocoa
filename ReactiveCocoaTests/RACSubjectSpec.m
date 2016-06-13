@@ -71,9 +71,10 @@ qck_describe(@"RACSubject", ^{
 		RACSubject* subject = [RACSubject new];
 		RACTestSubscriber* subscriber = [RACTestSubscriber new];
 
-		[[subject subscribe:subscriber] dispose];
+		RACDisposable *disposable = [subject subscribe:subscriber];
+		[subscriber.disposable dispose];
 
-		expect(@(subscriber.disposable.disposed)).to(beTruthy());
+		expect(@(disposable.disposed)).to(beTruthy());
 	});
 
 	qck_itBehavesLike(RACSubscriberExamples, ^{

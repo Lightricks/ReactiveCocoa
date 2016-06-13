@@ -11,8 +11,6 @@
 
 #import "RACSubscriberExamples.h"
 
-#import "NSObject+RACDeallocating.h"
-#import "RACCompoundDisposable.h"
 #import "RACDisposable.h"
 #import "RACSubject.h"
 #import "RACSubscriber.h"
@@ -166,22 +164,6 @@ QuickConfigurationBegin(RACSubscriberExampleGroups)
 
 				[disposableSignal subscribe:subscriber];
 				expect(@(disposed)).to(beTruthy());
-			});
-		});
-
-		qck_describe(@"memory management", ^{
-			qck_it(@"should not retain disposed disposables", ^{
-				__block BOOL disposableDeallocd = NO;
-				@autoreleasepool {
-					RACCompoundDisposable *disposable __attribute__((objc_precise_lifetime)) = [RACCompoundDisposable disposableWithBlock:^{}];
-					[disposable.rac_deallocDisposable addDisposable:[RACDisposable disposableWithBlock:^{
-						disposableDeallocd = YES;
-					}]];
-
-					[subscriber.disposable addDisposable:disposable];
-					[disposable dispose];
-				}
-				expect(@(disposableDeallocd)).to(beTruthy());
 			});
 		});
 	});

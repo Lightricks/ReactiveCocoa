@@ -11,6 +11,8 @@
 
 #import "RACSubscriberExamples.h"
 
+#import "NSObject+RACDeallocating.h"
+#import "RACCompoundDisposable.h"
 #import "RACLiveSubscriber.h"
 #import <libkern/OSAtomic.h>
 
@@ -124,6 +126,21 @@ qck_describe(@"finishing", ^{
 			finished = YES;
 			OSMemoryBarrier();
 		});
+	});
+});
+
+qck_describe(@"memory management", ^{
+	qck_it(@"should not retain disposed disposables", ^{
+		__block BOOL disposableDeallocd = NO;
+		@autoreleasepool {
+			RACLiveSubscriber *forwardingSubscriber = [RACLiveSubscriber subscriberForwardingToSubscriber:subscriber];
+			[forwardingSubscriber.disposable.rac_deallocDisposable addDisposable:[RACDisposable disposableWithBlock:^{
+				disposableDeallocd = YES;
+			}]];
+
+			[forwardingSubscriber.disposable dispose];
+		}
+		expect(@(disposableDeallocd)).to(beTruthy());
 	});
 });
 
