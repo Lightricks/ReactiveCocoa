@@ -7,6 +7,9 @@
 //  Released under the MIT license.
 //
 
+#ifndef EXTC_EXTSCOPE_H_
+#define EXTC_EXTSCOPE_H_
+
 #import "metamacros.h"
 
 /**
@@ -115,4 +118,6 @@ static inline void rac_executeCleanupBlock (__strong rac_cleanupBlock_t *block) 
 #define rac_keywordify autoreleasepool {}
 #else
 #define rac_keywordify try {} @catch (...) {}
+#endif
+
 #endif
