@@ -86,7 +86,7 @@ qck_describe(@"+sequenceWithHeadBlock:tailBlock:", ^{
 		expect(@(tailInvoked)).to(beTruthy());
 	});
 
-	qck_afterEach(^{
+	qck_context(@"behaves like a sequence", ^{
 		qck_itBehavesLike(RACSequenceExamples, ^{
 			return @{
 				RACSequenceExampleSequence: sequence,
@@ -308,7 +308,7 @@ qck_it(@"shouldn't overflow the stack when deallocated on a background queue", ^
 	__block BOOL finished = NO;
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 		@autoreleasepool {
-			[[values.rac_sequence map:^(id value) {
+			(void)[[values.rac_sequence map:^(id value) {
 				return value;
 			}] array];
 		}
