@@ -440,8 +440,57 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 }
 
 + (RACSignal *)combineLatest:(id<NSFastEnumeration>)signals {
-	return [[self join:signals block:^(RACSignal *left, RACSignal *right) {
-		return [left combineLatestWith:right];
+	NSCParameterAssert(signal != nil);
+
+	return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+		NSMutableArray<RACSignal *> *signalsArray = [NSMutableArray array];
+		for (RACSignal *signal in signals) {
+			[signalsArray addObject:signal];
+		}
+
+		NSUInteger signalsCount = signalsArray.count;
+		if (!signalsCount) {
+			[subscriber sendCompleted];
+			return nil;
+		}
+
+		// Number of signals that completed.
+		__block NSUInteger completedCount = 0;
+		// Set of signal indices that already sent at least one value.
+		__block NSMutableSet<NSNumber *> *sentValues = [NSMutableSet set];
+		// Last value that was sent by each signal.
+		__block NSMutableArray *lastValue = [NSMutableArray arrayWithCapacity:signalsArray.count];
+		for (NSUInteger i = 0; i < signalsCount; ++i) {
+			[lastValue addObject:[NSNull null]];
+		}
+
+		void (^sendNext)(NSUInteger) = ^(NSUInteger index) {
+			if (sentValues.count < signalsCount) return;
+			[subscriber sendNext:[RACTuple tupleWithObjectsFromArray:lastValue]];
+		};
+
+		RACCompoundDisposable *disposable = [RACCompoundDisposable compoundDisposable];
+
+		for (NSUInteger i = 0; i < signalsArray.count; ++i) {
+			RACDisposable *innerDisposable = [signalsArray[i] subscribeNext:^(id x) {
+				@synchronized (disposable) {
+					[sentValues addObject:@(i)];
+					lastValue[i] = x ?: RACTupleNil.tupleNil;
+					sendNext(i);
+				}
+			} error:^(NSError *error) {
+				[subscriber sendError:error];
+			} completed:^{
+				@synchronized (disposable) {
+					++completedCount;
+					if (completedCount == signalsCount) [subscriber sendCompleted];
+				}
+			}];
+
+			[disposable addDisposable:innerDisposable];
+		}
+
+		return disposable;
 	}] setNameWithFormat:@"+combineLatest: %@", signals];
 }
 
