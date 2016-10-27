@@ -440,8 +440,6 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 }
 
 + (RACSignal *)combineLatest:(id<NSFastEnumeration>)signals {
-	NSCParameterAssert(signal != nil);
-
 	return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
 		NSMutableArray<RACSignal *> *signalsArray = [NSMutableArray array];
 		for (RACSignal *signal in signals) {
@@ -459,7 +457,7 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 		// Set of signal indices that already sent at least one value.
 		__block NSMutableSet<NSNumber *> *sentValues = [NSMutableSet set];
 		// Last value that was sent by each signal.
-		__block NSMutableArray *lastValue = [NSMutableArray arrayWithCapacity:signalsArray.count];
+		__block NSMutableArray *lastValue = [NSMutableArray arrayWithCapacity:signalsCount];
 		for (NSUInteger i = 0; i < signalsCount; ++i) {
 			[lastValue addObject:[NSNull null]];
 		}
