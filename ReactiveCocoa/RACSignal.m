@@ -21,6 +21,7 @@
 #import "RACSubject.h"
 #import "RACSubscriber+Private.h"
 #import "RACTuple.h"
+#import "NSObject+RACDescription.h"
 #import <libkern/OSAtomic.h>
 
 @implementation RACSignal
@@ -343,6 +344,193 @@
 			[subscriber sendCompleted];
 		}];
 	}] setNameWithFormat:@"[%@] -map:", self.name];
+}
+
+- (instancetype)filter:(BOOL (^)(id))block {
+  NSCParameterAssert(block != nil);
+
+  return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    return [self subscribeNext:^(id x) {
+      if (block(x)) {
+        [subscriber sendNext:x];
+      }
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      [subscriber sendCompleted];
+    }];
+  }] setNameWithFormat:@"[%@] -filter:", self.name];
+}
+
+- (instancetype)flattenMap:(RACSignal *(^)(id))block {
+  return [RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    __block volatile int32_t subscriptionCount = 1;
+
+    RACCompoundDisposable *disposable = [RACCompoundDisposable compoundDisposable];
+
+    RACDisposable *outerDisposable = [self subscribeNext:^(id x) {
+      if (disposable.disposed) {
+        return;
+      }
+
+      RACSignal *signal = block(x);
+      if (!signal) {
+        return;
+      }
+      NSCAssert([signal isKindOfClass:RACSignal.class], @"Expected a RACSignal, got %@", signal);
+
+      OSAtomicIncrement32(&subscriptionCount);
+
+      RACDisposable *innerDisposable = [signal subscribeNext:^(id x) {
+        [subscriber sendNext:x];
+      } error:^(NSError *error) {
+        [subscriber sendError:error];
+        [disposable dispose];
+      } completed:^{
+        if (!OSAtomicDecrement32(&subscriptionCount)) {
+          [subscriber sendCompleted];
+        }
+      }];
+
+      [disposable addDisposable:innerDisposable];
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      if (!OSAtomicDecrement32(&subscriptionCount)) {
+        [subscriber sendCompleted];
+      }
+    }];
+
+    [disposable addDisposable:outerDisposable];
+    return disposable;
+  }];
+}
+
+- (instancetype)skip:(NSUInteger)skipCount {
+  if (!skipCount) {
+    return self;
+  }
+
+  return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    __block NSUInteger skipped = 0;
+
+    return [self subscribeNext:^(id x) {
+      if (skipped >= skipCount) {
+        [subscriber sendNext:x];
+        return;
+      }
+      ++skipped;
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      [subscriber sendCompleted];
+    }];
+  }] setNameWithFormat:@"[%@] -skip: %lu", self.name, (unsigned long)skipCount];
+}
+
+- (instancetype)take:(NSUInteger)count {
+  if (!count) {
+    return [RACSignal empty];
+  }
+
+  return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    __block NSUInteger taken = 0;
+
+    return [self subscribeNext:^(id x) {
+      // Avoid sending more than `count` values for recursive signals.
+      if (taken >= count) {
+        return;
+      }
+
+      ++taken;
+      [subscriber sendNext:x];
+
+      if (taken >= count) {
+        [subscriber sendCompleted];
+      }
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      [subscriber sendCompleted];
+    }];
+  }] setNameWithFormat:@"[%@] -take: %lu", self.name, (unsigned long)count];
+}
+
+- (instancetype)distinctUntilChanged {
+  return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    __block id lastValue = nil;
+    __block BOOL initial = YES;
+
+    return [self subscribeNext:^(id x) {
+      BOOL isEqual = lastValue == x || [x isEqual:lastValue];
+      if (!initial && isEqual) {
+        return;
+      }
+
+      initial = NO;
+      lastValue = x;
+      [subscriber sendNext:x];
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      [subscriber sendCompleted];
+    }];
+  }] setNameWithFormat:@"[%@] -distinctUntilChanged", self.name];
+}
+
+- (instancetype)scanWithStart:(id)startingValue reduceWithIndex:(id (^)(id, id, NSUInteger))reduceBlock {
+	NSCParameterAssert(reduceBlock != nil);
+
+  return [[RACSignal defer:^RACSignal *{
+    __block id running = startingValue;
+    __block NSUInteger idx = 0;
+
+    return [self map:^id(id value) {
+      running = reduceBlock(running, value, idx);
+      ++idx;
+      return running;
+    }];
+  }] setNameWithFormat:@"[%@] -scanWithStart: %@ reduceWithIndex:", self.name, RACDescription(startingValue)];
+}
+
+- (instancetype)takeUntilBlock:(BOOL (^)(id x))predicate {
+	NSCParameterAssert(predicate != nil);
+
+  return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    return [self subscribeNext:^(id x) {
+      if (predicate(x)) {
+        [subscriber sendCompleted];
+      } else {
+        [subscriber sendNext:x];
+      }
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      [subscriber sendCompleted];
+    }];
+  }] setNameWithFormat:@"[%@] -takeUntilBlock:", self.name];
+}
+
+- (instancetype)skipUntilBlock:(BOOL (^)(id x))predicate {
+  NSCParameterAssert(predicate != nil);
+
+  return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    __block BOOL skipping = YES;
+
+    return [self subscribeNext:^(id x) {
+      if (skipping) {
+        skipping &= !predicate(x);
+      }
+
+      if (!skipping) {
+        [subscriber sendNext:x];
+      }
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      [subscriber sendCompleted];
+    }];
+  }] setNameWithFormat:@"[%@] -skipUntilBlock:", self.name];
 }
 
 @end

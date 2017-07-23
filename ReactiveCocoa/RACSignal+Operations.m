@@ -1164,41 +1164,39 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 - (RACSignal *)any:(BOOL (^)(id object))predicateBlock {
 	NSCParameterAssert(predicateBlock != NULL);
 
-	return [[[self materialize] bind:^{
-		return ^(RACEvent *event, BOOL *stop) {
-			if (event.finished) {
-				*stop = YES;
-				return [RACSignal return:@NO];
-			}
-
-			if (predicateBlock(event.value)) {
-				*stop = YES;
-				return [RACSignal return:@YES];
-			}
-
-			return [RACSignal empty];
-		};
-	}] setNameWithFormat:@"[%@] -any:", self.name];
+  return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    return [self subscribeNext:^(id x) {
+      if (predicateBlock(x)) {
+        [subscriber sendNext:@YES];
+        [subscriber sendCompleted];
+      }
+    } error:^(NSError *error) {
+      [subscriber sendNext:@NO];
+      [subscriber sendCompleted];
+    } completed:^{
+      [subscriber sendNext:@NO];
+      [subscriber sendCompleted];
+    }];
+  }] setNameWithFormat:@"[%@] -any:", self.name];
 }
 
 - (RACSignal *)all:(BOOL (^)(id object))predicateBlock {
 	NSCParameterAssert(predicateBlock != NULL);
 
-	return [[[self materialize] bind:^{
-		return ^(RACEvent *event, BOOL *stop) {
-			if (event.eventType == RACEventTypeCompleted) {
-				*stop = YES;
-				return [RACSignal return:@YES];
-			}
-
-			if (event.eventType == RACEventTypeError || !predicateBlock(event.value)) {
-				*stop = YES;
-				return [RACSignal return:@NO];
-			}
-
-			return [RACSignal empty];
-		};
-	}] setNameWithFormat:@"[%@] -all:", self.name];
+  return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    return [self subscribeNext:^(id x) {
+      if (!predicateBlock(x)) {
+        [subscriber sendNext:@NO];
+        [subscriber sendCompleted];
+      }
+    } error:^(NSError *error) {
+      [subscriber sendNext:@NO];
+      [subscriber sendCompleted];
+    } completed:^{
+      [subscriber sendNext:@YES];
+      [subscriber sendCompleted];
+    }];
+  }] setNameWithFormat:@"[%@] -all:", self.name];
 }
 
 - (RACSignal *)retry:(NSInteger)retryCount {
@@ -1316,22 +1314,22 @@ static RACDisposable *subscribeForever (RACSignal *signal, void (^next)(id), voi
 }
 
 - (RACSignal *)dematerialize {
-	return [[self bind:^{
-		return ^(RACEvent *event, BOOL *stop) {
-			switch (event.eventType) {
-				case RACEventTypeCompleted:
-					*stop = YES;
-					return [RACSignal empty];
-
-				case RACEventTypeError:
-					*stop = YES;
-					return [RACSignal error:event.error];
-
-				case RACEventTypeNext:
-					return [RACSignal return:event.value];
-			}
-		};
-	}] setNameWithFormat:@"[%@] -dematerialize", self.name];
+  return [RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    return [self subscribeNext:^(RACEvent *event) {
+      switch (event.eventType) {
+        case RACEventTypeCompleted:
+          [subscriber sendCompleted];
+        case RACEventTypeError:
+          [subscriber sendError:event.error];
+        case RACEventTypeNext:
+          [subscriber sendNext:event.value];
+      }
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      [subscriber sendCompleted];
+    }];
+  }];
 }
 
 - (RACSignal *)not {
