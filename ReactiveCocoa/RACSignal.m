@@ -345,6 +345,22 @@
 	}] setNameWithFormat:@"[%@] -map:", self.name];
 }
 
+- (instancetype)filter:(BOOL (^)(id))block {
+  NSCParameterAssert(block != nil);
+
+  return [[RACSignal createSignal:^RACDisposable *(id<RACSubscriber> subscriber) {
+    return [self subscribeNext:^(id x) {
+      if (block(x)) {
+        [subscriber sendNext:x];
+      }
+    } error:^(NSError *error) {
+      [subscriber sendError:error];
+    } completed:^{
+      [subscriber sendCompleted];
+    }];
+  }] setNameWithFormat:@"[%@] -filter:", self.name];
+}
+
 @end
 
 @implementation RACSignal (Subscription)
